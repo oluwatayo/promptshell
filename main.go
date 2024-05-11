@@ -11,6 +11,9 @@ import (
 )
 
 func main() {
+	arg1 := "bash"
+	arg2 := "-c"
+
 	fmt.Println("initializing...")
 	ctx := context.Background()
 	client, err := genai.NewClient(ctx, option.WithAPIKey("REDACTED-API-KEY"))
@@ -22,7 +25,7 @@ func main() {
 
 	model := client.GenerativeModel("gemini-pro")
 	fmt.Println("generating response to prompt...")
-	resp, err := model.GenerateContent(ctx, genai.Text("generate a shell script for this task: create a folder called work and create two html files inside the folder"))
+	resp, err := model.GenerateContent(ctx, genai.Text("generate a shell script for this task: create an android project called blank"))
 	if err != nil {
 		fmt.Println("fatal error occurred", err)
 	}
@@ -31,17 +34,22 @@ func main() {
 	text = text[:len(text)-1]
 	text = strings.Replace(text, "```sh\n", "", 1)
 	text = strings.Replace(text, "```", "", 1)
-	writeToFile("exec.sh", text)
-	permissionCommand := "chmod a+x exec.sh"
-	exec.Command(permissionCommand)
-	app := "./exec.sh"
-	cmd := exec.Command(app)
-	stdout, err := cmd.Output()
+	writeToFile("prompt.sh", text)
+	permissionCommand := exec.Command(arg1, arg2, "chmod a+x prompt.sh")
+	_, err1 := permissionCommand.Output()
+	if err1 == nil {
+		fmt.Println("result from running permission command is")
+		app := "./prompt.sh"
+		cmd := exec.Command(arg1, arg2, app)
+		stdout, err := cmd.Output()
 
-	if err != nil {
-		fmt.Println(err.Error())
-		return
+		if err != nil {
+			fmt.Println(err.Error())
+			return
+		} else {
+			fmt.Print("executed prompt.sh", stdout)
+		}
 	} else {
-		fmt.Print("executed", stdout)
+		fmt.Println("error occurred while granting permission to prompt.sh", err1)
 	}
 }
