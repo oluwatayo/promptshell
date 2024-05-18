@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"os"
 )
@@ -17,17 +16,13 @@ func createOrGetConfig() (Config, error) {
 	var err error
 	data, readErr := ioutil.ReadFile(homeDir + "/.promptshell/config/config.json")
 	if readErr != nil {
-		fmt.Println("got read err", readErr)
 		mkErr := os.MkdirAll(homeDir+"/.promptshell/config/", os.ModePerm)
 		if mkErr != nil {
-			fmt.Println("unable to create config directory", mkErr)
 			err = mkErr
 		}
 	} else {
-		fmt.Println("was able to read")
 		parseError := json.Unmarshal(data, &config)
 		if parseError != nil {
-			fmt.Println("error occurred while parsing json", parseError)
 			err = parseError
 		}
 	}
@@ -38,17 +33,14 @@ func updateApiKey(newApiKey string) error {
 	homeDir, _ := os.UserHomeDir()
 	config, err := createOrGetConfig()
 	if err == nil {
-		fmt.Println("found a config file")
 		config.ApiKey = newApiKey
 		data, mashErr := json.Marshal(config)
 		if mashErr != nil {
-			fmt.Println("error occurred while updating api key")
+			return mashErr
 		} else {
-			fmt.Println("json", string(data))
+			return writeToFile(homeDir+"/.promptshell/config/config.json", string(data))
 		}
-		return writeToFile(homeDir+"/.promptshell/config/config.json", string(data))
 	} else {
-		fmt.Println("error getting a config file", err)
 		return err
 	}
 }
