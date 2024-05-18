@@ -6,6 +6,9 @@ import (
 	"os"
 )
 
+const configPath = "/.promptshell/config/"
+const configFileName = "config.json"
+
 func writeToFile(filename string, content string) error {
 	return ioutil.WriteFile(filename, []byte(content), 0666)
 }
@@ -14,9 +17,9 @@ func createOrGetConfig() (Config, error) {
 	homeDir, _ := os.UserHomeDir()
 	var config Config
 	var err error
-	data, readErr := ioutil.ReadFile(homeDir + "/.promptshell/config/config.json")
+	data, readErr := ioutil.ReadFile(homeDir + configPath + configFileName)
 	if readErr != nil {
-		mkErr := os.MkdirAll(homeDir+"/.promptshell/config/", os.ModePerm)
+		mkErr := os.MkdirAll(homeDir+configPath, os.ModePerm)
 		if mkErr != nil {
 			err = mkErr
 		}
@@ -38,7 +41,7 @@ func updateApiKey(newApiKey string) error {
 		if mashErr != nil {
 			return mashErr
 		} else {
-			return writeToFile(homeDir+"/.promptshell/config/config.json", string(data))
+			return writeToFile(homeDir+configPath+configFileName, string(data))
 		}
 	} else {
 		return err
