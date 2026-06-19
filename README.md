@@ -35,7 +35,7 @@ a published, installable CLI with support for multiple LLM providers.
 ```sh
 git clone https://github.com/oluwatayo/promptshell.git
 cd promptshell
-go build -o promptshell .
+go build -o promptshell ./cmd/promptshell
 ```
 
 ## Usage

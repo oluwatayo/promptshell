@@ -1,4 +1,4 @@
-module promptshell
+module github.com/oluwatayo/promptshell
 
 go 1.21
 
