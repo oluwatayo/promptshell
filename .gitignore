@@ -1,0 +1,10 @@
+# Compiled binary
+/promptshell
+
+# Generated shell script
+prompt.sh
+
+# Local config / secrets (in case anything lands in the repo)
+config.json
+.promptshell/
+*.env
