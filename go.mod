@@ -1,6 +1,8 @@
 module promptshell
 
-go 1.20
+go 1.21
+
+toolchain go1.23.4
 
 require (
 	github.com/google/generative-ai-go v0.11.2

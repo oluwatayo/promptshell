@@ -18,12 +18,33 @@ func main() {
 	cmdArg := os.Args
 
 	if len(cmdArg) > 1 {
+		if cmdArg[1] == "config" {
+			if len(cmdArg) < 3 {
+				fmt.Println("usage: promptshell config <api-key>")
+				return
+			}
+			if err := updateApiKey(cmdArg[2]); err != nil {
+				fmt.Println("error saving api key:", err)
+				return
+			}
+			fmt.Println("api key saved")
+			return
+		}
+
 		prompt := cmdArg[1]
 		fmt.Println("initializing...")
+
+		apiKey := resolveApiKey()
+		if apiKey == "" {
+			fmt.Println("no api key found. set one with: promptshell config <api-key> (or the PROMPTSHELL_API_KEY environment variable)")
+			return
+		}
+
 		ctx := context.Background()
-		client, err := genai.NewClient(ctx, option.WithAPIKey("AIzaSyCSakG5HG00_jzta6xJATWlHuEZi9QiXXE"))
+		client, err := genai.NewClient(ctx, option.WithAPIKey(apiKey))
 		if err != nil {
 			fmt.Println("fatal error occurred", err)
+			return
 		}
 
 		defer client.Close()
@@ -33,6 +54,7 @@ func main() {
 		resp, err := model.GenerateContent(ctx, genai.Text("generate a shell script for this task: "+prompt))
 		if err != nil {
 			fmt.Println("fatal error occurred", err)
+			return
 		}
 		candidate := resp.Candidates[0]
 		text := fmt.Sprintf("%vn", candidate.Content.Parts[0])
@@ -58,4 +80,17 @@ func main() {
 			fmt.Println("error occurred while granting permission to prompt.sh", err1)
 		}
 	}
+}
+
+// resolveApiKey returns the Gemini API key, preferring the PROMPTSHELL_API_KEY
+// environment variable and falling back to the saved config file.
+func resolveApiKey() string {
+	if key := os.Getenv("PROMPTSHELL_API_KEY"); key != "" {
+		return key
+	}
+	key, err := getApiKey()
+	if err != nil {
+		return ""
+	}
+	return key
 }
