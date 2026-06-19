@@ -135,4 +135,4 @@ pull requests are welcome.
 
 ## License
 
-MIT — see [LICENSE](LICENSE) (planned in Phase 0).
+MIT — see [LICENSE](LICENSE).
