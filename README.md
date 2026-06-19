@@ -41,28 +41,53 @@ go build -o promptshell ./cmd/promptshell
 ## Usage
 
 ```sh
-./promptshell "<your task in plain English>"
+./promptshell [--provider P] [--model M] "<your task in plain English>"
 ```
 
-Example:
+Example (uses the default provider, Ollama, which runs locally):
 
 ```sh
 ./promptshell "compress all .log files in this folder into logs.tar.gz"
 ```
 
+Pick a provider per-invocation:
+
+```sh
+./promptshell --provider gemini "list the 5 largest files here"
+```
+
+Provider selection precedence: `--provider` flag → `PROMPTSHELL_PROVIDER`
+environment variable → the `defaultProvider` in config. **Ollama is the default**
+— it runs locally and needs no API key, so promptshell works offline out of the
+box (it expects a local Ollama server; see https://ollama.com).
+
 ## Configuration
 
-promptshell reads configuration from `~/.promptshell/config/config.json`:
+```sh
+./promptshell config                         # show current configuration
+./promptshell config provider gemini         # set the default provider
+./promptshell config key gemini <api-key>    # save an API key for a provider
+./promptshell config model gemini gemini-pro # set the model for a provider
+```
+
+Configuration is stored at `~/.promptshell/config/config.json` (per-provider
+keys, models, and base URLs):
 
 ```json
 {
-  "apiKey": "your-api-key",
-  "provider": "gemini"
+  "version": 2,
+  "defaultProvider": "ollama",
+  "providers": {
+    "gemini": { "apiKey": "your-api-key" },
+    "ollama": { "model": "llama3", "baseURL": "http://localhost:11434" }
+  }
 }
 ```
 
-A multi-provider configuration format (with per-provider keys and model
-selection) and environment-variable overrides are planned — see the roadmap.
+API keys can also be supplied via environment variables:
+`PROMPTSHELL_<PROVIDER>_API_KEY` (e.g. `PROMPTSHELL_GEMINI_API_KEY`), or the
+legacy `PROMPTSHELL_API_KEY`. Older single-key config files are migrated to this
+format automatically.
 
 ## Roadmap
 
