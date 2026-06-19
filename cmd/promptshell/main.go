@@ -9,6 +9,8 @@ import (
 
 	"github.com/google/generative-ai-go/genai"
 	"google.golang.org/api/option"
+
+	"github.com/oluwatayo/promptshell/internal/config"
 )
 
 func main() {
@@ -23,7 +25,7 @@ func main() {
 				fmt.Println("usage: promptshell config <api-key>")
 				return
 			}
-			if err := updateApiKey(cmdArg[2]); err != nil {
+			if err := config.UpdateAPIKey(cmdArg[2]); err != nil {
 				fmt.Println("error saving api key:", err)
 				return
 			}
@@ -34,7 +36,7 @@ func main() {
 		prompt := cmdArg[1]
 		fmt.Println("initializing...")
 
-		apiKey := resolveApiKey()
+		apiKey := config.ResolveAPIKey()
 		if apiKey == "" {
 			fmt.Println("no api key found. set one with: promptshell config <api-key> (or the PROMPTSHELL_API_KEY environment variable)")
 			return
@@ -61,7 +63,10 @@ func main() {
 		text = text[:len(text)-1]
 		text = strings.Replace(text, "```sh\n", "", 1)
 		text = strings.TrimSuffix(string(text), "```\n")
-		writeToFile("prompt.sh", text)
+		if err := os.WriteFile("prompt.sh", []byte(text), 0o644); err != nil {
+			fmt.Println("error writing prompt.sh", err)
+			return
+		}
 		permissionCommand := exec.Command(arg1, arg2, "chmod a+x prompt.sh")
 		_, err1 := permissionCommand.Output()
 		if err1 == nil {
@@ -80,17 +85,4 @@ func main() {
 			fmt.Println("error occurred while granting permission to prompt.sh", err1)
 		}
 	}
-}
-
-// resolveApiKey returns the Gemini API key, preferring the PROMPTSHELL_API_KEY
-// environment variable and falling back to the saved config file.
-func resolveApiKey() string {
-	if key := os.Getenv("PROMPTSHELL_API_KEY"); key != "" {
-		return key
-	}
-	key, err := getApiKey()
-	if err != nil {
-		return ""
-	}
-	return key
 }
