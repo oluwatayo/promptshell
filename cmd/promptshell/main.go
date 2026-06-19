@@ -7,11 +7,14 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/google/generative-ai-go/genai"
-	"google.golang.org/api/option"
-
 	"github.com/oluwatayo/promptshell/internal/config"
+	"github.com/oluwatayo/promptshell/internal/llm"
+	_ "github.com/oluwatayo/promptshell/internal/llm/gemini"
 )
+
+// providerName is the LLM provider used to generate scripts. Configurable
+// provider selection arrives in Phase 2.
+const providerName = "gemini"
 
 func main() {
 	arg1 := "bash"
@@ -42,27 +45,25 @@ func main() {
 			return
 		}
 
-		ctx := context.Background()
-		client, err := genai.NewClient(ctx, option.WithAPIKey(apiKey))
+		provider, err := llm.New(providerName, llm.Config{APIKey: apiKey})
 		if err != nil {
 			fmt.Println("fatal error occurred", err)
 			return
 		}
 
-		defer client.Close()
-
-		model := client.GenerativeModel("gemini-pro")
 		fmt.Println("generating response to prompt...")
-		resp, err := model.GenerateContent(ctx, genai.Text("generate a shell script for this task: "+prompt))
+		ctx := context.Background()
+		resp, err := provider.Generate(ctx, llm.Request{
+			Prompt: "generate a shell script for this task: " + prompt,
+		})
 		if err != nil {
 			fmt.Println("fatal error occurred", err)
 			return
 		}
-		candidate := resp.Candidates[0]
-		text := fmt.Sprintf("%vn", candidate.Content.Parts[0])
-		text = text[:len(text)-1]
+
+		text := resp.Text
 		text = strings.Replace(text, "```sh\n", "", 1)
-		text = strings.TrimSuffix(string(text), "```\n")
+		text = strings.TrimSuffix(text, "```\n")
 		if err := os.WriteFile("prompt.sh", []byte(text), 0o644); err != nil {
 			fmt.Println("error writing prompt.sh", err)
 			return
