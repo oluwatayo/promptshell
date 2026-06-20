@@ -26,9 +26,15 @@ below tracks the path to a published, installable CLI.
 ## Requirements
 
 - Go 1.24+
-- `bash` available on your `PATH`
+- A Unix-like OS (macOS or Linux) with `bash` available on your `PATH`
 - For Ollama (the default): a local [Ollama](https://ollama.com) server — no API
   key needed. For Gemini / OpenAI / Anthropic: an API key for that provider.
+
+> [!NOTE]
+> **Windows is not supported yet.** promptshell generates and runs `bash`
+> scripts, so it currently targets macOS and Linux. Cross-platform support
+> (PowerShell on Windows) is planned for a future release — see the
+> [roadmap](#roadmap).
 
 ## Installation
 
