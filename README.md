@@ -42,19 +42,38 @@ go build -o promptshell ./cmd/promptshell
 ## Usage
 
 ```sh
-./promptshell [--provider P] [--model M] "<your task in plain English>"
+./promptshell [flags] "<your task in plain English>"
 ```
 
-Example (uses the default provider, Ollama, which runs locally):
+promptshell generates a shell script for the task, **shows it to you, and asks
+for confirmation before running it**:
 
 ```sh
-./promptshell "compress all .log files in this folder into logs.tar.gz"
+$ ./promptshell "compress all .log files in this folder into logs.tar.gz"
+generating with ollama...
+
+--- generated script ---
+tar -czf logs.tar.gz *.log
+------------------------
+Run this script? [y/N]
 ```
 
-Pick a provider per-invocation:
+### Flags
+
+| Flag | Description |
+| --- | --- |
+| `--provider P` | LLM provider (`ollama`, `gemini`, `openai`, `anthropic`) |
+| `--model M` | model override for the selected provider |
+| `--shell S` | shell used to run the script (default: `$PROMPTSHELL_SHELL` or `bash`) |
+| `--dry-run` | print the generated script without running it |
+| `--yes` | run without asking for confirmation |
+| `--verbose` | print extra diagnostic output to stderr |
+
+Preview a script without running it, or run it unattended:
 
 ```sh
-./promptshell --provider gemini "list the 5 largest files here"
+./promptshell --dry-run "delete every node_modules under this tree"
+./promptshell --provider gemini --yes "list the 5 largest files here"
 ```
 
 Provider selection precedence: `--provider` flag → `PROMPTSHELL_PROVIDER`
