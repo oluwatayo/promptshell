@@ -86,7 +86,7 @@ func (p *provider) Generate(ctx context.Context, req llm.Request) (llm.Response,
 	if err != nil {
 		return llm.Response{}, fmt.Errorf("ollama: could not reach the server at %s — is Ollama running? (https://ollama.com): %w", p.baseURL, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return llm.Response{}, fmt.Errorf("ollama: server returned status %s (is the model %q pulled? try `ollama pull %s`)", resp.Status, model, model)
