@@ -24,13 +24,14 @@ func Run(cfg config.Config) error {
 	if err != nil {
 		return err
 	}
-	defer rl.Close()
+	defer func() { _ = rl.Close() }()
 
 	// Session-scoped options, seeded from the config default provider.
 	opt := runner.Options{Provider: cfg.DefaultProvider}
 
 	fmt.Println("promptshell interactive shell — type a task, or :help for commands (:quit to exit).")
 
+loop:
 	for {
 		line, err := rl.Readline()
 		if err == readline.ErrInterrupt { // Ctrl-C
@@ -48,12 +49,10 @@ func Run(cfg config.Config) error {
 		case line == "":
 			continue
 		case line == "exit" || line == "quit":
-			break
+			break loop
 		case strings.HasPrefix(line, ":"):
 			if quit := handleMeta(line, &opt); quit {
-				rl.Close()
-				fmt.Println("bye")
-				return nil
+				break loop
 			}
 			continue
 		}

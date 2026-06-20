@@ -1,5 +1,7 @@
 # promptshell
 
+[![CI](https://github.com/oluwatayo/promptshell/actions/workflows/ci.yml/badge.svg)](https://github.com/oluwatayo/promptshell/actions/workflows/ci.yml)
+
 Turn a natural-language task into a shell script — and run it — from your terminal, powered by an LLM.
 
 ```sh
