@@ -17,15 +17,16 @@ runs it.
 
 ## Status
 
-Early stage. Today promptshell supports a single provider (Google Gemini) and a
-minimal command-line interface. The [roadmap](#roadmap) below tracks the path to
-a published, installable CLI with support for multiple LLM providers.
+Early stage, but multi-provider: promptshell supports **Ollama** (local, the
+default), **Gemini**, **OpenAI**, and **Anthropic**. The [roadmap](#roadmap)
+below tracks the path to a published, installable CLI.
 
 ## Requirements
 
-- Go 1.20+
+- Go 1.24+
 - `bash` available on your `PATH`
-- An API key for a supported provider (currently Google Gemini)
+- For Ollama (the default): a local [Ollama](https://ollama.com) server — no API
+  key needed. For Gemini / OpenAI / Anthropic: an API key for that provider.
 
 ## Installation
 
