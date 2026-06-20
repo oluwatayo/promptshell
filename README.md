@@ -76,6 +76,34 @@ Preview a script without running it, or run it unattended:
 ./promptshell --provider gemini --yes "list the 5 largest files here"
 ```
 
+### Interactive shell
+
+Run `promptshell` with no task to start an interactive session (like the `mysql`
+client) — type tasks directly without re-invoking the binary:
+
+```
+$ ./promptshell
+promptshell interactive shell — type a task, or :help for commands (:quit to exit).
+promptshell> list the 5 largest files here
+...
+promptshell> :provider gemini
+provider set to "gemini"
+promptshell> :quit
+```
+
+Lines starting with `:` are meta-commands; anything else is a task. Settings
+changed here apply to the session only (they are not saved to config).
+
+| Command | Description |
+| --- | --- |
+| `:provider [name]` | show or set the provider for this session |
+| `:model [name]` | show or set the model |
+| `:shell [name]` | show or set the shell used to run scripts |
+| `:yes` | toggle auto-run (skip the confirmation prompt) |
+| `:verbose` | toggle verbose diagnostics |
+| `:help` | list commands |
+| `:quit` | exit (also `exit`, `quit`, or Ctrl-D) |
+
 Provider selection precedence: `--provider` flag → `PROMPTSHELL_PROVIDER`
 environment variable → the `defaultProvider` in config. **Ollama is the default**
 — it runs locally and needs no API key, so promptshell works offline out of the

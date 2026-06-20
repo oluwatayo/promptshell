@@ -1,18 +1,15 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"flag"
 	"fmt"
-	"io"
 	"os"
-	"strings"
 
 	"github.com/oluwatayo/promptshell/internal/config"
-	"github.com/oluwatayo/promptshell/internal/llm"
-	"github.com/oluwatayo/promptshell/internal/shell"
+	"github.com/oluwatayo/promptshell/internal/repl"
+	"github.com/oluwatayo/promptshell/internal/runner"
 
 	// Register the available providers.
 	_ "github.com/oluwatayo/promptshell/internal/llm/anthropic"
@@ -20,18 +17,6 @@ import (
 	_ "github.com/oluwatayo/promptshell/internal/llm/ollama"
 	_ "github.com/oluwatayo/promptshell/internal/llm/openai"
 )
-
-const scriptPath = "prompt.sh"
-
-// genOptions holds the resolved flags for a generation run.
-type genOptions struct {
-	provider  string
-	model     string
-	shell     string
-	dryRun    bool
-	assumeYes bool
-	verbose   bool
-}
 
 func main() {
 	if err := run(os.Args[1:]); err != nil {
@@ -42,37 +27,41 @@ func main() {
 
 func run(argv []string) error {
 	fs := flag.NewFlagSet("promptshell", flag.ContinueOnError)
-	opt := genOptions{}
-	fs.StringVar(&opt.provider, "provider", "", "LLM provider to use (e.g. ollama, gemini, openai, anthropic)")
-	fs.StringVar(&opt.model, "model", "", "model override for the selected provider")
-	fs.StringVar(&opt.shell, "shell", "", "shell used to run the generated script (default: $PROMPTSHELL_SHELL or bash)")
-	fs.BoolVar(&opt.dryRun, "dry-run", false, "print the generated script without running it")
-	fs.BoolVar(&opt.assumeYes, "yes", false, "run the generated script without asking for confirmation")
-	fs.BoolVar(&opt.verbose, "verbose", false, "print extra diagnostic output to stderr")
+	fs.Usage = printUsage
+	opt := runner.Options{}
+	fs.StringVar(&opt.Provider, "provider", "", "LLM provider to use (ollama, gemini, openai, anthropic)")
+	fs.StringVar(&opt.Model, "model", "", "model override for the selected provider")
+	fs.StringVar(&opt.Shell, "shell", "", "shell used to run the generated script (default: $PROMPTSHELL_SHELL or bash)")
+	fs.BoolVar(&opt.DryRun, "dry-run", false, "print the generated script without running it")
+	fs.BoolVar(&opt.AssumeYes, "yes", false, "run the generated script without asking for confirmation")
+	fs.BoolVar(&opt.Verbose, "verbose", false, "print extra diagnostic output to stderr")
 	if err := fs.Parse(argv); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return nil
+		}
 		return err
 	}
 	args := fs.Args()
-
-	if len(args) == 0 {
-		printUsage()
-		return nil
-	}
 
 	cfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("loading config: %w", err)
 	}
 
-	if args[0] == "config" {
+	switch {
+	case len(args) == 0:
+		// No task given: start the interactive shell.
+		return repl.Run(cfg)
+	case args[0] == "config":
 		return runConfig(cfg, args[1:])
+	default:
+		return runner.Run(context.Background(), cfg, opt, args[0])
 	}
-
-	return generate(cfg, opt, args[0])
 }
 
 func printUsage() {
 	fmt.Println(`usage:
+  promptshell                             start the interactive shell
   promptshell [flags] "<task>"            generate a script for a task, then run it
   promptshell config                      show current configuration
   promptshell config provider <name>      set the default provider
@@ -92,94 +81,6 @@ Ollama is the default and runs locally with no API key.
 
 The generated script is always shown before it runs, and promptshell asks for
 confirmation unless --yes is given.`)
-}
-
-// generate is the core flow: pick a provider, ask it to produce a shell script,
-// preview it, and — after confirmation — run it.
-func generate(cfg config.Config, opt genOptions, prompt string) error {
-	providerName := firstNonEmpty(opt.provider, os.Getenv("PROMPTSHELL_PROVIDER"), cfg.DefaultProvider)
-	ps := cfg.Provider(providerName)
-
-	apiKey := resolveKey(providerName, ps)
-	if keyRequired(providerName) && apiKey == "" {
-		return fmt.Errorf("no api key for %q. set one with: promptshell config key %s <api-key> (or set %s)",
-			providerName, providerName, keyEnvVar(providerName))
-	}
-
-	model := firstNonEmpty(opt.model, ps.Model)
-	provider, err := llm.New(providerName, llm.Config{
-		APIKey:  apiKey,
-		Model:   model,
-		BaseURL: ps.BaseURL,
-	})
-	if err != nil {
-		return err
-	}
-
-	if opt.verbose {
-		fmt.Fprintf(os.Stderr, "provider=%s model=%s\n", providerName, firstNonEmpty(model, "(default)"))
-	}
-
-	fmt.Printf("generating with %s...\n", provider.Name())
-	resp, err := provider.Generate(context.Background(), llm.Request{
-		Prompt: "generate a shell script for this task: " + prompt,
-	})
-	if err != nil {
-		return err
-	}
-
-	script := shell.Extract(resp.Text)
-	fmt.Println("\n--- generated script ---")
-	fmt.Println(script)
-	fmt.Println("------------------------")
-
-	if opt.dryRun {
-		fmt.Println("(dry run — not executing)")
-		return nil
-	}
-
-	if !opt.assumeYes {
-		ok, err := confirm("Run this script?")
-		if err != nil {
-			return err
-		}
-		if !ok {
-			fmt.Println("aborted")
-			return nil
-		}
-	}
-
-	if err := shell.Write(scriptPath, script); err != nil {
-		return fmt.Errorf("writing %s: %w", scriptPath, err)
-	}
-
-	sh := firstNonEmpty(opt.shell, os.Getenv("PROMPTSHELL_SHELL"), shell.DefaultShell)
-	if opt.verbose {
-		fmt.Fprintf(os.Stderr, "running: %s %s\n", sh, scriptPath)
-	}
-	out, runErr := shell.Execute(context.Background(), sh, scriptPath)
-	if len(out) > 0 {
-		fmt.Print(string(out))
-	}
-	if runErr != nil {
-		return fmt.Errorf("running %s: %w", scriptPath, runErr)
-	}
-	return nil
-}
-
-// confirm prompts the user for a yes/no answer, defaulting to no.
-func confirm(prompt string) (bool, error) {
-	fmt.Printf("%s [y/N] ", prompt)
-	line, err := bufio.NewReader(os.Stdin).ReadString('\n')
-	if err != nil && !errors.Is(err, io.EOF) {
-		return false, err
-	}
-	switch strings.ToLower(strings.TrimSpace(line)) {
-	case "y", "yes":
-		return true, nil
-	default:
-		return false, nil
-	}
 }
 
 // runConfig handles the `config` subcommands.
@@ -221,37 +122,6 @@ func runConfig(cfg config.Config, args []string) error {
 	}
 	fmt.Println("saved")
 	return nil
-}
-
-// keyRequired reports whether a provider needs an API key. Local providers do
-// not.
-func keyRequired(provider string) bool {
-	return provider != "ollama"
-}
-
-// resolveKey returns the API key for a provider, preferring the provider-
-// specific environment variable, then the legacy global one, then config.
-func resolveKey(provider string, ps config.ProviderSettings) string {
-	if key := os.Getenv(keyEnvVar(provider)); key != "" {
-		return key
-	}
-	if key := os.Getenv("PROMPTSHELL_API_KEY"); key != "" {
-		return key
-	}
-	return ps.APIKey
-}
-
-func keyEnvVar(provider string) string {
-	return "PROMPTSHELL_" + strings.ToUpper(provider) + "_API_KEY"
-}
-
-func firstNonEmpty(vals ...string) string {
-	for _, v := range vals {
-		if v != "" {
-			return v
-		}
-	}
-	return ""
 }
 
 func maskKey(key string) string {
