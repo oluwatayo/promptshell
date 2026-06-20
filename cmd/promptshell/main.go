@@ -13,8 +13,10 @@ import (
 	"github.com/oluwatayo/promptshell/internal/llm"
 
 	// Register the available providers.
+	_ "github.com/oluwatayo/promptshell/internal/llm/anthropic"
 	_ "github.com/oluwatayo/promptshell/internal/llm/gemini"
 	_ "github.com/oluwatayo/promptshell/internal/llm/ollama"
+	_ "github.com/oluwatayo/promptshell/internal/llm/openai"
 )
 
 func main() {
