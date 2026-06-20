@@ -46,7 +46,7 @@ func (p *provider) Generate(ctx context.Context, req llm.Request) (llm.Response,
 	if err != nil {
 		return llm.Response{}, err
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	modelName := p.model
 	if req.Model != "" {
