@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"errors"
+	"flag"
 	"fmt"
 	"os"
 	"os/exec"
@@ -9,81 +11,184 @@ import (
 
 	"github.com/oluwatayo/promptshell/internal/config"
 	"github.com/oluwatayo/promptshell/internal/llm"
+
+	// Register the available providers.
 	_ "github.com/oluwatayo/promptshell/internal/llm/gemini"
+	_ "github.com/oluwatayo/promptshell/internal/llm/ollama"
 )
 
-// providerName is the LLM provider used to generate scripts. Configurable
-// provider selection arrives in Phase 2.
-const providerName = "gemini"
-
 func main() {
-	arg1 := "bash"
-	arg2 := "-c"
+	if err := run(os.Args[1:]); err != nil {
+		fmt.Fprintln(os.Stderr, "error:", err)
+		os.Exit(1)
+	}
+}
 
-	cmdArg := os.Args
+func run(argv []string) error {
+	fs := flag.NewFlagSet("promptshell", flag.ContinueOnError)
+	providerFlag := fs.String("provider", "", "LLM provider to use (e.g. ollama, gemini)")
+	modelFlag := fs.String("model", "", "model override for the selected provider")
+	if err := fs.Parse(argv); err != nil {
+		return err
+	}
+	args := fs.Args()
 
-	if len(cmdArg) > 1 {
-		if cmdArg[1] == "config" {
-			if len(cmdArg) < 3 {
-				fmt.Println("usage: promptshell config <api-key>")
-				return
-			}
-			if err := config.UpdateAPIKey(cmdArg[2]); err != nil {
-				fmt.Println("error saving api key:", err)
-				return
-			}
-			fmt.Println("api key saved")
-			return
+	if len(args) == 0 {
+		printUsage()
+		return nil
+	}
+
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("loading config: %w", err)
+	}
+
+	if args[0] == "config" {
+		return runConfig(cfg, args[1:])
+	}
+
+	return generate(cfg, *providerFlag, *modelFlag, args[0])
+}
+
+func printUsage() {
+	fmt.Println(`usage:
+  promptshell [--provider P] [--model M] "<task>"   generate and run a script
+  promptshell config                                show current configuration
+  promptshell config provider <name>                set the default provider
+  promptshell config key <provider> <api-key>       save an API key for a provider
+  promptshell config model <provider> <model>       set the model for a provider
+
+Provider selection precedence: --provider > PROMPTSHELL_PROVIDER > config default.
+Ollama is the default and runs locally with no API key.`)
+}
+
+// generate is the core flow: pick a provider, ask it to produce a shell script,
+// then write, chmod, and execute it.
+func generate(cfg config.Config, providerFlag, modelFlag, prompt string) error {
+	providerName := firstNonEmpty(providerFlag, os.Getenv("PROMPTSHELL_PROVIDER"), cfg.DefaultProvider)
+	ps := cfg.Provider(providerName)
+
+	apiKey := resolveKey(providerName, ps)
+	if keyRequired(providerName) && apiKey == "" {
+		return fmt.Errorf("no api key for %q. set one with: promptshell config key %s <api-key> (or set %s)",
+			providerName, providerName, keyEnvVar(providerName))
+	}
+
+	model := firstNonEmpty(modelFlag, ps.Model)
+	provider, err := llm.New(providerName, llm.Config{
+		APIKey:  apiKey,
+		Model:   model,
+		BaseURL: ps.BaseURL,
+	})
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("generating with %s...\n", provider.Name())
+	ctx := context.Background()
+	resp, err := provider.Generate(ctx, llm.Request{
+		Prompt: "generate a shell script for this task: " + prompt,
+	})
+	if err != nil {
+		return err
+	}
+
+	script := resp.Text
+	script = strings.Replace(script, "```sh\n", "", 1)
+	script = strings.TrimSuffix(script, "```\n")
+	if err := os.WriteFile("prompt.sh", []byte(script), 0o644); err != nil {
+		return fmt.Errorf("writing prompt.sh: %w", err)
+	}
+
+	if _, err := exec.Command("bash", "-c", "chmod a+x prompt.sh").Output(); err != nil {
+		return fmt.Errorf("granting execute permission to prompt.sh: %w", err)
+	}
+	out, err := exec.Command("bash", "-c", "./prompt.sh").Output()
+	if err != nil {
+		return fmt.Errorf("running prompt.sh: %w", err)
+	}
+	fmt.Print(string(out))
+	return nil
+}
+
+// runConfig handles the `config` subcommands.
+func runConfig(cfg config.Config, args []string) error {
+	if len(args) == 0 {
+		fmt.Printf("default provider: %s\n", cfg.DefaultProvider)
+		if len(cfg.Providers) == 0 {
+			fmt.Println("no per-provider settings saved")
+			return nil
 		}
-
-		prompt := cmdArg[1]
-		fmt.Println("initializing...")
-
-		apiKey := config.ResolveAPIKey()
-		if apiKey == "" {
-			fmt.Println("no api key found. set one with: promptshell config <api-key> (or the PROMPTSHELL_API_KEY environment variable)")
-			return
+		for name, p := range cfg.Providers {
+			fmt.Printf("  %s: model=%q baseURL=%q key=%s\n", name, p.Model, p.BaseURL, maskKey(p.APIKey))
 		}
+		return nil
+	}
 
-		provider, err := llm.New(providerName, llm.Config{APIKey: apiKey})
-		if err != nil {
-			fmt.Println("fatal error occurred", err)
-			return
+	switch args[0] {
+	case "provider":
+		if len(args) < 2 {
+			return errors.New("usage: promptshell config provider <name>")
 		}
-
-		fmt.Println("generating response to prompt...")
-		ctx := context.Background()
-		resp, err := provider.Generate(ctx, llm.Request{
-			Prompt: "generate a shell script for this task: " + prompt,
-		})
-		if err != nil {
-			fmt.Println("fatal error occurred", err)
-			return
+		cfg.SetDefaultProvider(args[1])
+	case "key":
+		if len(args) < 3 {
+			return errors.New("usage: promptshell config key <provider> <api-key>")
 		}
-
-		text := resp.Text
-		text = strings.Replace(text, "```sh\n", "", 1)
-		text = strings.TrimSuffix(text, "```\n")
-		if err := os.WriteFile("prompt.sh", []byte(text), 0o644); err != nil {
-			fmt.Println("error writing prompt.sh", err)
-			return
+		cfg.SetKey(args[1], args[2])
+	case "model":
+		if len(args) < 3 {
+			return errors.New("usage: promptshell config model <provider> <model>")
 		}
-		permissionCommand := exec.Command(arg1, arg2, "chmod a+x prompt.sh")
-		_, err1 := permissionCommand.Output()
-		if err1 == nil {
-			fmt.Println("result from running permission command is")
-			app := "./prompt.sh"
-			cmd := exec.Command(arg1, arg2, app)
-			stdout, err := cmd.Output()
+		cfg.SetModel(args[1], args[2])
+	default:
+		return fmt.Errorf("unknown config command %q (try: provider, key, model)", args[0])
+	}
 
-			if err != nil {
-				fmt.Println(err.Error())
-				return
-			} else {
-				fmt.Print("executed prompt.sh", stdout)
-			}
-		} else {
-			fmt.Println("error occurred while granting permission to prompt.sh", err1)
+	if err := config.Save(cfg); err != nil {
+		return fmt.Errorf("saving config: %w", err)
+	}
+	fmt.Println("saved")
+	return nil
+}
+
+// keyRequired reports whether a provider needs an API key. Local providers do
+// not.
+func keyRequired(provider string) bool {
+	return provider != "ollama"
+}
+
+// resolveKey returns the API key for a provider, preferring the provider-
+// specific environment variable, then the legacy global one, then config.
+func resolveKey(provider string, ps config.ProviderSettings) string {
+	if key := os.Getenv(keyEnvVar(provider)); key != "" {
+		return key
+	}
+	if key := os.Getenv("PROMPTSHELL_API_KEY"); key != "" {
+		return key
+	}
+	return ps.APIKey
+}
+
+func keyEnvVar(provider string) string {
+	return "PROMPTSHELL_" + strings.ToUpper(provider) + "_API_KEY"
+}
+
+func firstNonEmpty(vals ...string) string {
+	for _, v := range vals {
+		if v != "" {
+			return v
 		}
 	}
+	return ""
+}
+
+func maskKey(key string) string {
+	if key == "" {
+		return "(unset)"
+	}
+	if len(key) <= 4 {
+		return "****"
+	}
+	return "****" + key[len(key)-4:]
 }
