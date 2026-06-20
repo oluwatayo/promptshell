@@ -107,6 +107,7 @@ promptshell/
 │   └── gemini/ openai/ anthropic/ ollama/
 ├── internal/config/           # v2 schema + migration from current format
 ├── internal/shell/            # extract → preview → confirm → execute
+├── internal/repl/             # interactive shell (read → generate → run loop)
 ├── .github/workflows/         # ci.yml, release.yml
 ├── .goreleaser.yaml
 └── LICENSE  README.md  CHANGELOG.md
@@ -134,6 +135,16 @@ promptshell/
     and `--yes`.
   - Configurable shell (not hardcoded `bash`); robust script extraction;
     `--verbose` and cleaner error handling.
+- **Phase 3.5 — Interactive shell (REPL)**
+  - Run `promptshell` with no task to start an interactive session (like the
+    `mysql` client): type tasks directly at a prompt without re-invoking the
+    binary each time.
+  - Meta-commands prefixed to distinguish them from tasks (e.g. `:provider`,
+    `:model`, `:help`, `:quit`); plain `exit` / `quit` also exit.
+  - Line editing and command history via a readline library; persistent
+    provider/client across commands.
+  - Depends on the Phase 3 preview-and-confirm gate — interactive mode must not
+    auto-run generated scripts unattended.
 - **Phase 4 — Quality**
   - Unit tests with a mock provider, table tests for script extraction,
     `golangci-lint` and `go vet` in CI.
