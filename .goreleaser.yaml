@@ -32,17 +32,11 @@ archives:
 checksum:
   name_template: checksums.txt
 
+# release-please owns the changelog and release notes.
 changelog:
-  use: github
-  sort: asc
-  filters:
-    exclude:
-      - "^docs:"
-      - "^test:"
-      - "^ci:"
-      - "^chore:"
-      - "Merge pull request"
+  disable: true
 
 release:
-  draft: false
-  prerelease: auto
+  # release-please creates the GitHub Release; GoReleaser only uploads the
+  # built binaries and checksums onto it.
+  mode: append
