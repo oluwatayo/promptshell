@@ -18,6 +18,9 @@ import (
 	_ "github.com/oluwatayo/promptshell/internal/llm/openai"
 )
 
+// version is the build version, overridden at release time via -ldflags.
+var version = "dev"
+
 func main() {
 	if err := run(os.Args[1:]); err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
@@ -29,6 +32,7 @@ func run(argv []string) error {
 	fs := flag.NewFlagSet("promptshell", flag.ContinueOnError)
 	fs.Usage = printUsage
 	opt := runner.Options{}
+	showVersion := fs.Bool("version", false, "print the promptshell version and exit")
 	fs.StringVar(&opt.Provider, "provider", "", "LLM provider to use (ollama, gemini, openai, anthropic)")
 	fs.StringVar(&opt.Model, "model", "", "model override for the selected provider")
 	fs.StringVar(&opt.Shell, "shell", "", "shell used to run the generated script (default: $PROMPTSHELL_SHELL or bash)")
@@ -40,6 +44,10 @@ func run(argv []string) error {
 			return nil
 		}
 		return err
+	}
+	if *showVersion {
+		fmt.Printf("promptshell %s\n", version)
+		return nil
 	}
 	args := fs.Args()
 
