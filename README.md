@@ -38,6 +38,19 @@ below tracks the path to a published, installable CLI.
 
 ## Installation
 
+**Quick install (script):**
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/oluwatayo/promptshell/main/install.sh | sh
+```
+
+This detects your OS/arch, downloads the latest release binary, verifies its
+checksum, and installs it (to `/usr/local/bin`, or `~/.local/bin` otherwise).
+Override the target with `PROMPTSHELL_INSTALL_DIR` or pin a version with
+`PROMPTSHELL_VERSION`. As with any `curl | sh` installer, feel free to
+[read the script](https://github.com/oluwatayo/promptshell/blob/main/install.sh)
+first.
+
 **With Go:**
 
 ```sh
