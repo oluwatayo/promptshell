@@ -1,5 +1,9 @@
-# Compiled binary
+# Compiled binaries
 /promptshell
+/main
+
+# GoReleaser output
+/dist/
 
 # Generated shell script
 prompt.sh

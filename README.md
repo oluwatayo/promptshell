@@ -38,8 +38,17 @@ below tracks the path to a published, installable CLI.
 
 ## Installation
 
-> Installation via `go install` and prebuilt binaries is planned (see the
-> [roadmap](#roadmap)). For now, build from source:
+**With Go:**
+
+```sh
+go install github.com/oluwatayo/promptshell/cmd/promptshell@latest
+```
+
+**Prebuilt binary:** download the archive for your OS/arch from the
+[latest release](https://github.com/oluwatayo/promptshell/releases/latest),
+extract it, and put the `promptshell` binary on your `PATH`.
+
+**From source:**
 
 ```sh
 git clone https://github.com/oluwatayo/promptshell.git
