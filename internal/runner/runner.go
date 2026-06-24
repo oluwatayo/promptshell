@@ -14,6 +14,7 @@ import (
 
 	"github.com/oluwatayo/promptshell/internal/config"
 	"github.com/oluwatayo/promptshell/internal/llm"
+	"github.com/oluwatayo/promptshell/internal/llm/ollama"
 	"github.com/oluwatayo/promptshell/internal/shell"
 )
 
@@ -58,11 +59,21 @@ func Run(ctx context.Context, cfg config.Config, opt Options, prompt string) err
 		fmt.Fprintf(os.Stderr, "provider=%s model=%s\n", providerName, FirstNonEmpty(model, "(default)"))
 	}
 
-	fmt.Printf("generating with %s...\n", provider.Name())
+	// On a fresh install with nothing configured, a failed Ollama call means
+	// the user hasn't set anything up yet — guide them instead of printing a
+	// progress line and a raw connection error.
+	firstRun := looksLikeFirstRun(cfg, opt, providerName)
+	if !firstRun {
+		fmt.Printf("generating with %s...\n", provider.Name())
+	}
 	resp, err := provider.Generate(ctx, llm.Request{
 		Prompt: "generate a shell script for this task: " + prompt,
 	})
 	if err != nil {
+		if firstRun && errors.Is(err, ollama.ErrUnreachable) {
+			printFirstRunHelp()
+			return nil
+		}
 		return err
 	}
 
@@ -107,6 +118,38 @@ func Run(ctx context.Context, cfg config.Config, opt Options, prompt string) err
 		return fmt.Errorf("running %s: %w", scriptPath, runErr)
 	}
 	return nil
+}
+
+// looksLikeFirstRun reports whether this is an unconfigured run that fell back
+// to the default Ollama provider: the user did not pick a provider (no flag or
+// env var) and nothing is saved in config.
+func looksLikeFirstRun(cfg config.Config, opt Options, providerName string) bool {
+	chosenByUser := opt.Provider != "" || os.Getenv("PROMPTSHELL_PROVIDER") != ""
+	return !chosenByUser && providerName == ollama.Name && len(cfg.Providers) == 0
+}
+
+// printFirstRunHelp shows a "pick your path" message for a fresh install where
+// Ollama (the default) isn't available yet.
+func printFirstRunHelp() {
+	fmt.Printf(`promptshell isn't set up yet.
+
+By default it uses Ollama — a model that runs locally on your machine with no
+API key — but Ollama doesn't appear to be running at %s.
+
+Pick one:
+
+  1) Use Ollama (local, offline, no API key)
+       - Install it:                  https://ollama.com
+       - Start it, then pull a model: ollama pull %s
+       - Re-run your command.
+
+  2) Use a cloud provider (gemini, openai, or anthropic)
+       - promptshell config provider openai
+       - promptshell config key openai <your-api-key>
+       - Re-run your command.
+
+Run 'promptshell --help' for the full list of options.
+`, ollama.DefaultBaseURL, ollama.DefaultModel)
 }
 
 // stdinConfirm prompts the user for a yes/no answer on stdin, defaulting to no.
