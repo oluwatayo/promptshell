@@ -2,12 +2,14 @@ package runner
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
 
 	"github.com/oluwatayo/promptshell/internal/config"
 	"github.com/oluwatayo/promptshell/internal/llm"
+	"github.com/oluwatayo/promptshell/internal/llm/ollama"
 )
 
 // fakeProvider returns a fixed script that creates a marker file when run, so
@@ -124,6 +126,78 @@ func TestKeyRequired(t *testing.T) {
 	}
 	if !KeyRequired("openai") {
 		t.Error("openai should require a key")
+	}
+}
+
+func TestLooksLikeFirstRun(t *testing.T) {
+	empty := config.Config{DefaultProvider: "ollama", Providers: map[string]config.ProviderSettings{}}
+	configured := config.Config{DefaultProvider: "ollama", Providers: map[string]config.ProviderSettings{"ollama": {}}}
+
+	t.Run("fresh default ollama", func(t *testing.T) {
+		t.Setenv("PROMPTSHELL_PROVIDER", "")
+		if !looksLikeFirstRun(empty, Options{}, "ollama") {
+			t.Error("want true for an unconfigured default-ollama run")
+		}
+	})
+	t.Run("provider chosen by flag", func(t *testing.T) {
+		t.Setenv("PROMPTSHELL_PROVIDER", "")
+		if looksLikeFirstRun(empty, Options{Provider: "ollama"}, "ollama") {
+			t.Error("want false when the user passed --provider")
+		}
+	})
+	t.Run("provider chosen by env", func(t *testing.T) {
+		t.Setenv("PROMPTSHELL_PROVIDER", "ollama")
+		if looksLikeFirstRun(empty, Options{}, "ollama") {
+			t.Error("want false when PROMPTSHELL_PROVIDER is set")
+		}
+	})
+	t.Run("already configured", func(t *testing.T) {
+		t.Setenv("PROMPTSHELL_PROVIDER", "")
+		if looksLikeFirstRun(configured, Options{}, "ollama") {
+			t.Error("want false when providers are configured")
+		}
+	})
+	t.Run("non-ollama provider", func(t *testing.T) {
+		t.Setenv("PROMPTSHELL_PROVIDER", "")
+		if looksLikeFirstRun(empty, Options{}, "openai") {
+			t.Error("want false for a non-ollama provider")
+		}
+	})
+}
+
+// unreachableOllama is a stand-in for the ollama provider that always reports
+// the server is unreachable.
+type unreachableOllama struct{}
+
+func (unreachableOllama) Name() string { return "ollama" }
+func (unreachableOllama) Generate(context.Context, llm.Request) (llm.Response, error) {
+	return llm.Response{}, fmt.Errorf("boom: %w", ollama.ErrUnreachable)
+}
+
+func TestRunFirstRunShowsHelpNotError(t *testing.T) {
+	t.Chdir(t.TempDir())
+	t.Setenv("PROMPTSHELL_PROVIDER", "")
+	llm.Register("ollama", func(llm.Config) (llm.Provider, error) { return unreachableOllama{}, nil })
+
+	cfg := config.Config{DefaultProvider: "ollama", Providers: map[string]config.ProviderSettings{}}
+	if err := Run(context.Background(), cfg, Options{}, "task"); err != nil {
+		t.Fatalf("want nil (help shown), got %v", err)
+	}
+	if exists(t, "ran.marker") || exists(t, "prompt.sh") {
+		t.Error("first-run help should not generate or execute a script")
+	}
+}
+
+func TestRunExplicitOllamaUnreachableReturnsError(t *testing.T) {
+	t.Chdir(t.TempDir())
+	t.Setenv("PROMPTSHELL_PROVIDER", "")
+	llm.Register("ollama", func(llm.Config) (llm.Provider, error) { return unreachableOllama{}, nil })
+
+	// User explicitly chose ollama → they get the real error, not first-run help.
+	cfg := config.Config{DefaultProvider: "ollama", Providers: map[string]config.ProviderSettings{}}
+	err := Run(context.Background(), cfg, Options{Provider: "ollama"}, "task")
+	if err == nil {
+		t.Fatal("want an error when ollama was explicitly selected and is unreachable")
 	}
 }
 

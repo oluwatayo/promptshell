@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -16,10 +17,15 @@ import (
 // Name is the registered provider name.
 const Name = "ollama"
 
+// Defaults for a local Ollama install.
 const (
-	defaultModel   = "llama3"
-	defaultBaseURL = "http://localhost:11434"
+	DefaultModel   = "llama3"
+	DefaultBaseURL = "http://localhost:11434"
 )
+
+// ErrUnreachable indicates the Ollama server could not be contacted (e.g. it is
+// not installed or not running). Callers can detect it with errors.Is.
+var ErrUnreachable = errors.New("ollama: could not reach the server")
 
 func init() {
 	llm.Register(Name, New)
@@ -36,11 +42,11 @@ type provider struct {
 func New(cfg llm.Config) (llm.Provider, error) {
 	model := cfg.Model
 	if model == "" {
-		model = defaultModel
+		model = DefaultModel
 	}
 	baseURL := cfg.BaseURL
 	if baseURL == "" {
-		baseURL = defaultBaseURL
+		baseURL = DefaultBaseURL
 	}
 	return &provider{model: model, baseURL: baseURL, client: http.DefaultClient}, nil
 }
@@ -84,7 +90,7 @@ func (p *provider) Generate(ctx context.Context, req llm.Request) (llm.Response,
 
 	resp, err := p.client.Do(httpReq)
 	if err != nil {
-		return llm.Response{}, fmt.Errorf("ollama: could not reach the server at %s — is Ollama running? (https://ollama.com): %w", p.baseURL, err)
+		return llm.Response{}, fmt.Errorf("%w at %s — is Ollama running? (https://ollama.com): %v", ErrUnreachable, p.baseURL, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
