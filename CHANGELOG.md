@@ -4,6 +4,14 @@ All notable changes to promptshell are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0](https://github.com/oluwatayo/promptshell/compare/v0.2.0...v0.3.0) (2026-06-24)
+
+
+### Features
+
+* friendly first-run guidance when Ollama isn't available ([89a07ef](https://github.com/oluwatayo/promptshell/commit/89a07ef80899d5811faf7c5084d6bec91c26f6e2))
+* friendly first-run guidance when Ollama isn't available ([638aa3e](https://github.com/oluwatayo/promptshell/commit/638aa3ea72e75139ff45f5520f7ada2eb31fc3e6))
+
 ## [0.2.0](https://github.com/oluwatayo/promptshell/compare/v0.1.0...v0.2.0) (2026-06-21)
 
 
