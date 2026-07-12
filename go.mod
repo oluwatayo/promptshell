@@ -1,13 +1,13 @@
 module github.com/oluwatayo/promptshell
 
-go 1.25.0
+go 1.24.0
 
 require (
 	github.com/anthropics/anthropic-sdk-go v1.51.0
 	github.com/chzyer/readline v1.5.1
 	github.com/google/generative-ai-go v0.11.2
 	github.com/openai/openai-go v1.12.0
-	golang.org/x/mod v0.38.0
+	golang.org/x/mod v0.29.0
 	google.golang.org/api v0.189.0
 )
 
