@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime/debug"
 
 	"github.com/oluwatayo/promptshell/internal/config"
 	"github.com/oluwatayo/promptshell/internal/repl"
@@ -32,7 +33,9 @@ func run(argv []string) error {
 	fs := flag.NewFlagSet("promptshell", flag.ContinueOnError)
 	fs.Usage = printUsage
 	opt := runner.Options{}
-	showVersion := fs.Bool("version", false, "print the promptshell version and exit")
+	var showVersion bool
+	fs.BoolVar(&showVersion, "version", false, "print the promptshell version and exit")
+	fs.BoolVar(&showVersion, "v", false, "print the promptshell version and exit (shorthand)")
 	fs.StringVar(&opt.Provider, "provider", "", "LLM provider to use (ollama, gemini, openai, anthropic)")
 	fs.StringVar(&opt.Model, "model", "", "model override for the selected provider")
 	fs.StringVar(&opt.Shell, "shell", "", "shell used to run the generated script (default: $PROMPTSHELL_SHELL or bash)")
@@ -45,8 +48,8 @@ func run(argv []string) error {
 		}
 		return err
 	}
-	if *showVersion {
-		fmt.Printf("promptshell %s\n", version)
+	if showVersion {
+		fmt.Printf("promptshell %s\n", resolveVersion())
 		return nil
 	}
 	args := fs.Args()
@@ -83,12 +86,27 @@ flags:
   --dry-run      print the generated script without running it
   --yes          run without asking for confirmation
   --verbose      print extra diagnostic output
+  --version, -v  print the promptshell version and exit
 
 Provider selection precedence: --provider > PROMPTSHELL_PROVIDER > config default.
 Ollama is the default and runs locally with no API key.
 
 The generated script is always shown before it runs, and promptshell asks for
 confirmation unless --yes is given.`)
+}
+
+// resolveVersion returns the release version injected via -ldflags, falling
+// back to the Go module version for `go install` builds (which skip ldflags).
+func resolveVersion() string {
+	if version != "dev" {
+		return version
+	}
+	if bi, ok := debug.ReadBuildInfo(); ok {
+		if v := bi.Main.Version; v != "" && v != "(devel)" {
+			return v
+		}
+	}
+	return version
 }
 
 // runConfig handles the `config` subcommands.
