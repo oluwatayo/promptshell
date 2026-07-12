@@ -45,6 +45,7 @@ curl -fsSL https://raw.githubusercontent.com/oluwatayo/promptshell/main/install.
 
 This detects your OS/arch, downloads the latest release binary, verifies its
 checksum, and installs it (to `/usr/local/bin`, or `~/.local/bin` otherwise).
+It also creates a shorter `pshell` alias (a symlink beside the binary) — `pshell` and `promptshell` are interchangeable in every command below.
 Override the target with `PROMPTSHELL_INSTALL_DIR` or pin a version with
 `PROMPTSHELL_VERSION`. As with any `curl | sh` installer, feel free to
 [read the script](https://github.com/oluwatayo/promptshell/blob/main/install.sh)
@@ -55,6 +56,9 @@ first.
 ```sh
 go install github.com/oluwatayo/promptshell/cmd/promptshell@latest
 ```
+
+`go install` doesn't create the `pshell` alias; add it yourself with
+`ln -s promptshell "$(go env GOPATH)/bin/pshell"` (or use a shell alias).
 
 **Prebuilt binary:** download the archive for your OS/arch from the
 [latest release](https://github.com/oluwatayo/promptshell/releases/latest),
@@ -68,17 +72,21 @@ cd promptshell
 go build -o promptshell ./cmd/promptshell
 ```
 
+This leaves the binary in the current directory — run it as `./promptshell`,
+or move it onto your `PATH` (e.g. `mv promptshell ~/.local/bin/`) to invoke
+it as `promptshell` like the examples below.
+
 ## Usage
 
 ```sh
-./promptshell [flags] "<your task in plain English>"
+promptshell [flags] "<your task in plain English>"
 ```
 
 promptshell generates a shell script for the task, **shows it to you, and asks
 for confirmation before running it**:
 
 ```sh
-$ ./promptshell "compress all .log files in this folder into logs.tar.gz"
+$ promptshell "compress all .log files in this folder into logs.tar.gz"
 generating with ollama...
 
 --- generated script ---
@@ -103,8 +111,8 @@ Run this script? [y/N]
 Preview a script without running it, or run it unattended:
 
 ```sh
-./promptshell --dry-run "delete every node_modules under this tree"
-./promptshell --provider gemini --yes "list the 5 largest files here"
+promptshell --dry-run "delete every node_modules under this tree"
+promptshell --provider gemini --yes "list the 5 largest files here"
 ```
 
 ### Interactive shell
@@ -113,7 +121,7 @@ Run `promptshell` with no task to start an interactive session (like the `mysql`
 client) — type tasks directly without re-invoking the binary:
 
 ```
-$ ./promptshell
+$ promptshell
 promptshell interactive shell — type a task, or :help for commands (:quit to exit).
 promptshell> list the 5 largest files here
 ...
@@ -143,10 +151,10 @@ box (it expects a local Ollama server; see https://ollama.com).
 ## Configuration
 
 ```sh
-./promptshell config                         # show current configuration
-./promptshell config provider gemini         # set the default provider
-./promptshell config key gemini <api-key>    # save an API key for a provider
-./promptshell config model gemini gemini-pro # set the model for a provider
+promptshell config                         # show current configuration
+promptshell config provider gemini         # set the default provider
+promptshell config key gemini <api-key>    # save an API key for a provider
+promptshell config model gemini gemini-pro # set the model for a provider
 ```
 
 Configuration is stored at `~/.promptshell/config/config.json` (per-provider
