@@ -4,6 +4,14 @@ All notable changes to promptshell are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0](https://github.com/oluwatayo/promptshell/compare/v0.5.0...v0.6.0) (2026-07-12)
+
+
+### Features
+
+* create a pshell alias symlink in install.sh ([766f410](https://github.com/oluwatayo/promptshell/commit/766f41008dce6e9f93ebc52e6b76b4c8bffb6091))
+* pshell alias symlink and README command polish ([048a8fe](https://github.com/oluwatayo/promptshell/commit/048a8fe153a428c3d20e8ae9d2fdb16ea17eb953))
+
 ## [0.5.0](https://github.com/oluwatayo/promptshell/compare/v0.4.0...v0.5.0) (2026-07-12)
 
 
