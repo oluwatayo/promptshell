@@ -62,8 +62,16 @@ base="$BASE_URL/$version"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT INT TERM
 
+# Show a progress bar when stderr is a terminal; stay silent when piped (CI).
+if [ -t 2 ]; then
+  curl_progress="--progress-bar"
+else
+  curl_progress="-s"
+fi
+
 info "Downloading $asset ($version)..."
-curl -fsSL "$base/$asset" -o "$tmp/$asset" || die "download failed: $base/$asset"
+# shellcheck disable=SC2086 # $curl_progress is a single flag, not user data
+curl -fSL $curl_progress "$base/$asset" -o "$tmp/$asset" || die "download failed: $base/$asset"
 
 # --- verify checksum (best effort: only if checksums.txt and a tool exist) ---
 if curl -fsSL "$base/checksums.txt" -o "$tmp/checksums.txt" 2>/dev/null; then
