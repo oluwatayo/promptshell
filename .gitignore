@@ -12,3 +12,7 @@ prompt.sh
 config.json
 .promptshell/
 *.env
+
+# Local AI-workflow scratch (not project docs — those live in docs/superpowers/)
+.superpowers/
+.claude/
