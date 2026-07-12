@@ -60,21 +60,26 @@ func Run(ctx context.Context, cfg config.Config, opt Options, prompt string) err
 	}
 
 	// On a fresh install with nothing configured, a failed Ollama call means
-	// the user hasn't set anything up yet — guide them instead of printing a
-	// progress line and a raw connection error.
+	// the user hasn't set anything up yet — guide them (and offer to set Ollama
+	// up) instead of printing a progress line and a raw connection error.
 	firstRun := looksLikeFirstRun(cfg, opt, providerName)
 	if !firstRun {
 		fmt.Printf("generating with %s...\n", provider.Name())
 	}
-	resp, err := provider.Generate(ctx, llm.Request{
-		Prompt: "generate a shell script for this task: " + prompt,
-	})
+	req := llm.Request{Prompt: "generate a shell script for this task: " + prompt}
+	resp, err := provider.Generate(ctx, req)
 	if err != nil {
 		if firstRun && errors.Is(err, ollama.ErrUnreachable) {
-			printFirstRunHelp()
-			return nil
+			pullModel := FirstNonEmpty(model, ollama.DefaultModel)
+			if !handleOllamaFirstRun(pullModel, ollama.DefaultBaseURL) {
+				return nil
+			}
+			// Ollama is set up now — retry the request once.
+			resp, err = provider.Generate(ctx, req)
 		}
-		return err
+		if err != nil {
+			return err
+		}
 	}
 
 	script := shell.Extract(resp.Text)
@@ -128,38 +133,71 @@ func looksLikeFirstRun(cfg config.Config, opt Options, providerName string) bool
 	return !chosenByUser && providerName == ollama.Name && len(cfg.Providers) == 0
 }
 
-// printFirstRunHelp shows a "pick your path" message for a fresh install where
-// Ollama (the default) isn't available yet.
-func printFirstRunHelp() {
+// handleOllamaFirstRun shows first-run guidance and, in an interactive
+// terminal, offers to install and start Ollama. It returns true if Ollama is
+// now reachable and the caller should retry.
+func handleOllamaFirstRun(model, baseURL string) bool {
+	interactive := stdinIsTTY()
+	printFirstRunHelp(baseURL, model, interactive)
+	if !interactive {
+		return false
+	}
+
+	fmt.Println()
+	ok, err := promptYesNo("Install and start Ollama now?")
+	if err != nil || !ok {
+		fmt.Println("No problem — set it up when you're ready, then re-run your command.")
+		return false
+	}
+	if !setupOllama(defaultOllamaEnv(), model, baseURL) {
+		return false
+	}
+	fmt.Println("\nOllama is ready — generating your script...")
+	return true
+}
+
+// printFirstRunHelp explains the fresh-install state and the ways forward.
+func printFirstRunHelp(baseURL, model string, interactive bool) {
 	fmt.Printf(`promptshell isn't set up yet.
 
 By default it uses Ollama — a model that runs locally on your machine with no
-API key — but Ollama doesn't appear to be running at %s.
+API key — but Ollama isn't reachable at %s.
+`, baseURL)
 
-Pick one:
+	if interactive {
+		fmt.Printf("\npromptshell can install and start Ollama for you (see the prompt below),\n"+
+			"or you can set it up yourself: install from https://ollama.com, then `ollama pull %s`.\n", model)
+	} else {
+		fmt.Printf("\nTo use Ollama: install it from https://ollama.com, start it, then run:\n  ollama pull %s\n", model)
+	}
 
-  1) Use Ollama (local, offline, no API key)
-       - Install it:                  https://ollama.com
-       - Start it, then pull a model: ollama pull %s
-       - Re-run your command.
+	fmt.Println(`
+Or use a cloud provider instead:
+  promptshell config provider openai
+  promptshell config key openai <your-api-key>
 
-  2) Use a cloud provider (gemini, openai, or anthropic)
-       - promptshell config provider openai
-       - promptshell config key openai <your-api-key>
-       - Re-run your command.
-
-Run 'promptshell --help' for the full list of options.
-`, ollama.DefaultBaseURL, ollama.DefaultModel)
+Run 'promptshell --help' for the full list of options.`)
 }
 
-// stdinConfirm prompts the user for a yes/no answer on stdin, defaulting to no.
-func stdinConfirm() (bool, error) {
-	fmt.Print("Run this script? [y/N] ")
+// stdinIsTTY reports whether standard input is an interactive terminal.
+func stdinIsTTY() bool {
+	fi, err := os.Stdin.Stat()
+	return err == nil && fi.Mode()&os.ModeCharDevice != 0
+}
+
+// promptYesNo asks a yes/no question on stdin, defaulting to no.
+func promptYesNo(prompt string) (bool, error) {
+	fmt.Printf("%s [y/N] ", prompt)
 	line, err := bufio.NewReader(os.Stdin).ReadString('\n')
 	if err != nil && !errors.Is(err, io.EOF) {
 		return false, err
 	}
 	return YesNo(line), nil
+}
+
+// stdinConfirm prompts before running the generated script, defaulting to no.
+func stdinConfirm() (bool, error) {
+	return promptYesNo("Run this script?")
 }
 
 // YesNo interprets a line of input as an affirmative answer.
