@@ -93,7 +93,12 @@ func isTTY(f *os.File) bool {
 // It returns nil both when an update was installed and when none was needed.
 func Run(env Env, currentVersion string) error {
 	cur := normalize(currentVersion)
-	if !semver.IsValid(cur) {
+	// Go >=1.24 stamps a plain `go build` in a git checkout with a valid-semver
+	// VCS pseudo-version (e.g. v0.4.1-0.20260712191717-e3032842f891+dirty), so
+	// semver.IsValid alone isn't enough to detect a dev build. Release tags are
+	// always bare vX.Y.Z, so any prerelease or build metadata means this binary
+	// didn't come from a tagged release and must not be self-updated.
+	if !semver.IsValid(cur) || semver.Prerelease(cur) != "" || semver.Build(cur) != "" {
 		return fmt.Errorf("this is a development build (version %q); update from source or reinstall with install.sh", currentVersion)
 	}
 

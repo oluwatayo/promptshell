@@ -105,6 +105,28 @@ func TestRunRefusesDevBuild(t *testing.T) {
 	}
 }
 
+func TestRunRefusesVCSPseudoVersion(t *testing.T) {
+	srv := fakeRelease(t, "v0.5.0", []byte("new-binary"))
+	env, execPath := runEnv(t, srv)
+
+	// Go >=1.24 stamps source builds with VCS pseudo-versions; these are
+	// valid semver but are not release installs and must be refused.
+	for _, v := range []string{
+		"0.4.1-0.20260712191717-e3032842f891+dirty",
+		"v0.4.1-0.20260712191717-e3032842f891",
+		"v0.5.0+dirty",
+	} {
+		err := Run(env, v)
+		if err == nil || !strings.Contains(err.Error(), "development build") {
+			t.Errorf("Run(%q) = %v, want a development-build refusal", v, err)
+		}
+	}
+	got, _ := os.ReadFile(execPath)
+	if string(got) != "old-binary" {
+		t.Error("binary was replaced for a pseudo-version build")
+	}
+}
+
 func TestRunChecksumMismatchAborts(t *testing.T) {
 	srv := fakeRelease(t, "v0.5.0", []byte("new-binary"))
 	env, execPath := runEnv(t, srv)
