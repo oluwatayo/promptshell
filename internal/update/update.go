@@ -88,3 +88,52 @@ func isTTY(f *os.File) bool {
 	}
 	return fi.Mode()&os.ModeCharDevice != 0
 }
+
+// Run checks for a newer release and installs it over the current binary.
+// It returns nil both when an update was installed and when none was needed.
+func Run(env Env, currentVersion string) error {
+	cur := normalize(currentVersion)
+	if !semver.IsValid(cur) {
+		return fmt.Errorf("this is a development build (version %q); update from source or reinstall with install.sh", currentVersion)
+	}
+
+	latest, err := LatestVersion(env)
+	if err != nil {
+		return fmt.Errorf("could not check for updates: %w", err)
+	}
+
+	if semver.Compare(cur, latest) >= 0 {
+		_, _ = fmt.Fprintf(env.Out, "promptshell %s is up to date — no updates available\n", strings.TrimPrefix(cur, "v"))
+		return nil
+	}
+
+	execPath, err := env.ExecPath()
+	if err != nil {
+		return fmt.Errorf("locating the current binary: %w", err)
+	}
+
+	asset := fmt.Sprintf("promptshell_%s_%s_%s.tar.gz", strings.TrimPrefix(latest, "v"), env.GOOS, env.GOARCH)
+	base := env.RepoURL + "/releases/download/" + latest
+
+	tmpDir, err := os.MkdirTemp("", "promptshell-update-")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = os.RemoveAll(tmpDir) }()
+
+	archive := filepath.Join(tmpDir, asset)
+	if err := download(env, base+"/"+asset, archive, latest); err != nil {
+		return err
+	}
+	if err := verifyChecksum(env, base+"/checksums.txt", archive, asset); err != nil {
+		return err
+	}
+	_, _ = fmt.Fprintln(env.Out, "Checksum verified.")
+
+	if err := replaceBinary(archive, execPath); err != nil {
+		return err
+	}
+
+	_, _ = fmt.Fprintf(env.Out, "updated promptshell %s → %s\n", cur, latest)
+	return nil
+}
