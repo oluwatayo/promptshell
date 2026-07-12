@@ -116,7 +116,23 @@ else
 fi
 chmod +x "$dir/$BIN"
 
-info "Installed $BIN $version to $dir/$BIN"
+# --- create the pshell alias (a relative symlink; never clobber a real file) ---
+alias_name=pshell
+alias_note=""
+run_in_dir=""
+[ -w "$dir" ] || run_in_dir="sudo"
+if [ ! -e "$dir/$alias_name" ] || [ -h "$dir/$alias_name" ]; then
+  # shellcheck disable=SC2086 # $run_in_dir is empty or the single word "sudo"
+  $run_in_dir rm -f "$dir/$alias_name"
+  # shellcheck disable=SC2086
+  if $run_in_dir ln -s "$BIN" "$dir/$alias_name"; then
+    alias_note=" (alias: $alias_name)"
+  fi
+else
+  info "Note: $dir/$alias_name already exists and is not a symlink; skipping the $alias_name alias."
+fi
+
+info "Installed $BIN $version to $dir/$BIN$alias_note"
 case ":$PATH:" in
   *":$dir:"*) ;;
   *) info "Note: $dir is not on your PATH. Add it, e.g.:"
