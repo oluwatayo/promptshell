@@ -11,6 +11,7 @@ import (
 	"github.com/oluwatayo/promptshell/internal/config"
 	"github.com/oluwatayo/promptshell/internal/repl"
 	"github.com/oluwatayo/promptshell/internal/runner"
+	"github.com/oluwatayo/promptshell/internal/update"
 
 	// Register the available providers.
 	_ "github.com/oluwatayo/promptshell/internal/llm/anthropic"
@@ -36,6 +37,8 @@ func run(argv []string) error {
 	var showVersion bool
 	fs.BoolVar(&showVersion, "version", false, "print the promptshell version and exit")
 	fs.BoolVar(&showVersion, "v", false, "print the promptshell version and exit (shorthand)")
+	var doUpdate bool
+	fs.BoolVar(&doUpdate, "update", false, "check for a newer release and install it")
 	fs.StringVar(&opt.Provider, "provider", "", "LLM provider to use (ollama, gemini, openai, anthropic)")
 	fs.StringVar(&opt.Model, "model", "", "model override for the selected provider")
 	fs.StringVar(&opt.Shell, "shell", "", "shell used to run the generated script (default: $PROMPTSHELL_SHELL or bash)")
@@ -51,6 +54,9 @@ func run(argv []string) error {
 	if showVersion {
 		fmt.Printf("promptshell %s\n", resolveVersion())
 		return nil
+	}
+	if doUpdate {
+		return update.Run(update.DefaultEnv(), resolveVersion())
 	}
 	args := fs.Args()
 
@@ -78,6 +84,8 @@ func printUsage() {
   promptshell config provider <name>      set the default provider
   promptshell config key <provider> <key> save an API key for a provider
   promptshell config model <provider> <m> set the model for a provider
+  promptshell --version | -v              print the version
+  promptshell --update                    update promptshell to the latest release
 
 flags:
   --provider P   LLM provider (ollama, gemini, openai, anthropic)
@@ -87,6 +95,7 @@ flags:
   --yes          run without asking for confirmation
   --verbose      print extra diagnostic output
   --version, -v  print the promptshell version and exit
+  --update       check for a newer release and install it
 
 Provider selection precedence: --provider > PROMPTSHELL_PROVIDER > config default.
 Ollama is the default and runs locally with no API key.

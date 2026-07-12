@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestResolveVersionUsesInjectedVersion(t *testing.T) {
 	old := version
@@ -29,5 +32,17 @@ func TestVersionFlagAliases(t *testing.T) {
 		if err := run(argv); err != nil {
 			t.Errorf("run(%v) returned error: %v", argv, err)
 		}
+	}
+}
+
+func TestUpdateFlagIsRegistered(t *testing.T) {
+	// A dev build refuses to self-update before touching the network, so
+	// --update on a test binary must return the refusal — not a flag error.
+	err := run([]string{"--update"})
+	if err == nil {
+		t.Fatal("run(--update) on a dev build should refuse, got nil")
+	}
+	if !strings.Contains(err.Error(), "development build") {
+		t.Errorf("error = %q, want a development-build refusal", err)
 	}
 }

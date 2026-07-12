@@ -97,6 +97,8 @@ Run this script? [y/N]
 | `--dry-run` | print the generated script without running it |
 | `--yes` | run without asking for confirmation |
 | `--verbose` | print extra diagnostic output to stderr |
+| `--version`, `-v` | print the promptshell version and exit |
+| `--update` | check for a newer release and install it |
 
 Preview a script without running it, or run it unattended:
 
