@@ -4,6 +4,26 @@ All notable changes to promptshell are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0](https://github.com/oluwatayo/promptshell/compare/v0.4.0...v0.5.0) (2026-07-12)
+
+
+### Features
+
+* add --update flag to self-update from GitHub releases ([414fe73](https://github.com/oluwatayo/promptshell/commit/414fe73605414989cc7fb4d26219ee4e3366b9a6))
+* add -v shorthand and go-install version fallback ([3c28f4e](https://github.com/oluwatayo/promptshell/commit/3c28f4ee1616286db62abb55fda59b9753416efb))
+* download release assets with progress display ([0b634d5](https://github.com/oluwatayo/promptshell/commit/0b634d53005f5dac5228e90323ecedaffbf9f7bb))
+* resolve latest release version for self-update ([6ab0bad](https://github.com/oluwatayo/promptshell/commit/6ab0bad1428b01b9835901624c91b8589d8d7b51))
+* self-update flow for promptshell --update ([8cfdf5a](https://github.com/oluwatayo/promptshell/commit/8cfdf5a832b78cc156f7b2af5de1870cc39bded5))
+* show a download progress bar in install.sh on a TTY ([e303284](https://github.com/oluwatayo/promptshell/commit/e3032842f89170b295b4cf4ec9bf085f439a3aff))
+* verify checksums and atomically replace the binary ([e6e6f2e](https://github.com/oluwatayo/promptshell/commit/e6e6f2ea99cf0220e1cd2a8da2766298be0f2417))
+* version/update flags and installer download progress ([1ec2808](https://github.com/oluwatayo/promptshell/commit/1ec2808335d4355b77e1ce9dd5028ff450a4660b))
+
+
+### Bug Fixes
+
+* pin golang.org/x/mod to keep the Go 1.24 floor ([c0ab734](https://github.com/oluwatayo/promptshell/commit/c0ab734572a2ea9b04419d50536b8fa8e14db02c))
+* refuse self-update on VCS-stamped source builds ([421555a](https://github.com/oluwatayo/promptshell/commit/421555a52e4a5cb1beaf17a73030ca0aa4e45f79))
+
 ## [0.4.0](https://github.com/oluwatayo/promptshell/compare/v0.3.0...v0.4.0) (2026-07-12)
 
 
