@@ -66,7 +66,13 @@ func Run(ctx context.Context, cfg config.Config, opt Options, prompt string) err
 	if !firstRun {
 		fmt.Printf("generating with %s...\n", provider.Name())
 	}
-	req := llm.Request{Prompt: "generate a shell script for this task: " + prompt}
+	req := llm.Request{
+		// Chatty models pad answers with prose and usage examples;
+		// shell.Extract defends against that, but ask for raw output anyway.
+		System: "You write shell scripts. Respond with only the script, in a single ```sh code block. " +
+			"No explanations, no usage instructions, no extra code blocks.",
+		Prompt: "generate a shell script for this task: " + prompt,
+	}
 	resp, err := provider.Generate(ctx, req)
 	if err != nil {
 		if firstRun && errors.Is(err, ollama.ErrUnreachable) {

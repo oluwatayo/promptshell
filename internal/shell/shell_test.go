@@ -38,6 +38,22 @@ func TestExtract(t *testing.T) {
 			in:   "```sh\necho hi",
 			want: "echo hi",
 		},
+		{
+			name: "prose around the fence",
+			in:   "Here is a script:\n\n```bash\npwd\n```\n\nHope this helps!",
+			want: "pwd",
+		},
+		{
+			name: "multiple fences takes the first",
+			in: "Here is a simple shell script:\n\n```bash\n#!/bin/bash\npwd\n```\n\n" +
+				"### How to use:\n\n```bash\nchmod +x cwd.sh\n```\n\n```bash\n./cwd.sh\n```",
+			want: "#!/bin/bash\npwd",
+		},
+		{
+			name: "prose with unclosed fence",
+			in:   "Sure thing:\n```sh\necho hi",
+			want: "echo hi",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
