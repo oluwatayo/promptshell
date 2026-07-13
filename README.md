@@ -115,6 +115,10 @@ promptshell --dry-run "delete every node_modules under this tree"
 promptshell --provider gemini --yes "list the 5 largest files here"
 ```
 
+When a newer release is available, promptshell prints a one-line hint after a
+run (checked at most once per day; shown only on a terminal). Disable it with
+`PROMPTSHELL_NO_UPDATE_CHECK=1`.
+
 ### Interactive shell
 
 Run `promptshell` with no task to start an interactive session (like the `mysql`
@@ -175,6 +179,7 @@ API keys can also be supplied via environment variables:
 `PROMPTSHELL_<PROVIDER>_API_KEY` (e.g. `PROMPTSHELL_GEMINI_API_KEY`), or the
 legacy `PROMPTSHELL_API_KEY`. Older single-key config files are migrated to this
 format automatically.
+`PROMPTSHELL_NO_UPDATE_CHECK=1` disables the daily new-version check.
 
 ## Roadmap
 
