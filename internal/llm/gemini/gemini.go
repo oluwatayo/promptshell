@@ -6,8 +6,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/generative-ai-go/genai"
-	"google.golang.org/api/option"
+	"google.golang.org/genai"
 
 	"github.com/oluwatayo/promptshell/internal/llm"
 )
@@ -24,8 +23,9 @@ func init() {
 }
 
 type provider struct {
-	apiKey string
-	model  string
+	apiKey  string
+	model   string
+	baseURL string
 }
 
 // New builds a Gemini provider from the given config. An API key is required.
@@ -37,38 +37,41 @@ func New(cfg llm.Config) (llm.Provider, error) {
 	if model == "" {
 		model = defaultModel
 	}
-	return &provider{apiKey: cfg.APIKey, model: model}, nil
+	return &provider{apiKey: cfg.APIKey, model: model, baseURL: cfg.BaseURL}, nil
 }
 
 func (p *provider) Name() string { return Name }
 
 // Generate sends the request to Gemini and returns the model's raw text.
 func (p *provider) Generate(ctx context.Context, req llm.Request) (llm.Response, error) {
-	client, err := genai.NewClient(ctx, option.WithAPIKey(p.apiKey))
+	client, err := genai.NewClient(ctx, &genai.ClientConfig{
+		APIKey:  p.apiKey,
+		Backend: genai.BackendGeminiAPI,
+		// An empty BaseURL means the SDK's default public endpoint.
+		HTTPOptions: genai.HTTPOptions{BaseURL: p.baseURL},
+	})
 	if err != nil {
 		return llm.Response{}, err
 	}
-	defer func() { _ = client.Close() }()
 
 	modelName := p.model
 	if req.Model != "" {
 		modelName = req.Model
 	}
 
-	prompt := req.Prompt
+	var genCfg *genai.GenerateContentConfig
 	if req.System != "" {
-		prompt = req.System + "\n\n" + req.Prompt
+		genCfg = &genai.GenerateContentConfig{
+			SystemInstruction: genai.NewContentFromText(req.System, ""),
+		}
 	}
 
-	model := client.GenerativeModel(modelName)
-	resp, err := model.GenerateContent(ctx, genai.Text(prompt))
+	resp, err := client.Models.GenerateContent(ctx, modelName, genai.Text(req.Prompt), genCfg)
 	if err != nil {
 		return llm.Response{}, err
 	}
-	if len(resp.Candidates) == 0 || resp.Candidates[0].Content == nil ||
-		len(resp.Candidates[0].Content.Parts) == 0 {
-		return llm.Response{}, fmt.Errorf("gemini: empty response")
+	if text := resp.Text(); text != "" {
+		return llm.Response{Text: text}, nil
 	}
-	text := fmt.Sprintf("%v", resp.Candidates[0].Content.Parts[0])
-	return llm.Response{Text: text}, nil
+	return llm.Response{}, fmt.Errorf("gemini: empty response")
 }
