@@ -68,12 +68,18 @@ func run(argv []string) error {
 	switch {
 	case len(args) == 0:
 		// No task given: start the interactive shell.
+		update.Hint(update.DefaultEnv(), update.DefaultHintOptions(), resolveVersion())
 		return repl.Run(cfg)
 	case args[0] == "config":
 		return runConfig(cfg, args[1:])
 	default:
-		return runner.Run(context.Background(), cfg, opt, args[0])
+		if err := runner.Run(context.Background(), cfg, opt, args[0]); err != nil {
+			return err
+		}
+		update.Hint(update.DefaultEnv(), update.DefaultHintOptions(), resolveVersion())
+		return nil
 	}
+
 }
 
 func printUsage() {
