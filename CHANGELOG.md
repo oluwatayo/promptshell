@@ -4,6 +4,13 @@ All notable changes to promptshell are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.2](https://github.com/oluwatayo/promptshell/compare/v0.6.1...v0.6.2) (2026-07-13)
+
+
+### Bug Fixes
+
+* never execute prose around the generated script ([7fc7542](https://github.com/oluwatayo/promptshell/commit/7fc75428c081acc34ddf8a1f67f0b698cae1a218))
+
 ## [0.6.1](https://github.com/oluwatayo/promptshell/compare/v0.6.0...v0.6.1) (2026-07-13)
 
 
