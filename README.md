@@ -154,7 +154,7 @@ box (it expects a local Ollama server; see https://ollama.com).
 promptshell config                         # show current configuration
 promptshell config provider gemini         # set the default provider
 promptshell config key gemini <api-key>    # save an API key for a provider
-promptshell config model gemini gemini-pro # set the model for a provider
+promptshell config model gemini gemini-2.5-pro # set the model for a provider
 ```
 
 Configuration is stored at `~/.promptshell/config/config.json` (per-provider

@@ -15,7 +15,9 @@ import (
 // Name is the registered provider name.
 const Name = "gemini"
 
-const defaultModel = "gemini-pro"
+// defaultModel is a rolling alias so the default keeps working as Google
+// retires pinned model versions (the pinned "gemini-pro" now 404s).
+const defaultModel = "gemini-flash-latest"
 
 func init() {
 	llm.Register(Name, New)
