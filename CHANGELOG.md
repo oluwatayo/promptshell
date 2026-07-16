@@ -4,6 +4,15 @@ All notable changes to promptshell are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0](https://github.com/oluwatayo/promptshell/compare/v0.6.2...v0.7.0) (2026-07-13)
+
+
+### Features
+
+* hint when a newer release is available ([f594ca2](https://github.com/oluwatayo/promptshell/commit/f594ca264b4691202e7b737b2925c37183d775fa))
+* hint when a newer release is available ([de24ffc](https://github.com/oluwatayo/promptshell/commit/de24ffcfbdd6efe769a620079c0ef1938c0817af))
+* show the update hint after task runs and at REPL start ([c7f47a0](https://github.com/oluwatayo/promptshell/commit/c7f47a0123b937430b2da69ba63a3f854a13325e))
+
 ## [0.6.2](https://github.com/oluwatayo/promptshell/compare/v0.6.1...v0.6.2) (2026-07-13)
 
 
